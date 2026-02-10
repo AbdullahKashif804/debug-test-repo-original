@@ -1,35 +1,61 @@
 const express = require("express");
 const router = express.Router();
 const { transactions } = require("../db");
+const {
+  createTransactionSchema,
+  getTransactionsSchema,
+  deleteTransactionSchema,
+} = require("../validations/transaction");
 const { calculateTotal } = require("../services/calcService");
 
-router.post("/", (req, res) => {
-  const { title, amount, type } = req.body;
-  const tx = {
-    id: Date.now(),
-    title,
-    amount,
-    type
-  };
+
+//POST METHOD
+router.post("/", createTransactionSchema, (req, res) => {
+  try{
+    const { title, amount, type } = req.body;
+  const tx = { id: Date.now(), title, amount, type };
   transactions.push(tx);
-  transactions.push(tx); // ❌ Duplicate insert bug
-  res.json(tx);
+}catch(err){
+  console.error("Error Occurs:",err)
+}
 });
 
-router.get("/", (req, res) => {
-  res.json(transactions); // ❌ No pagination, no filtering
+
+//GET METHOD
+router.get("/", getTransactionsSchema, (req, res) => {
+  try{
+    let { type, page, limit } = req.query;
+  let filtered = transactions;
+  if (type) filtered = filtered.filter((t) => t.type === type);
+
+  const start = (page - 1) * limit;
+  res.json(filtered.slice(start, start + limit));
+  }catch(err){
+    console.error("Error Occur:",err)
+  }
 });
 
-router.get("/summary", (req, res) => {
-  const total = calculateTotal(transactions);
-  res.json({ total });
+
+//GET SUMMARY METHOD
+router.get("/summary", (req, res, next) => {
+  try {
+    const total = calculateTotal(transactions);
+    res.json({ total });
+  } catch (err) {
+    next(err);
+  }
 });
 
-router.delete("/:id", (req, res) => {
-  const id = req.params.id;
-  const index = transactions.findIndex(t => t.id == id);
-  transactions.splice(index, 1); // ❌ No index check → crash possible
-  res.json({ success: true });
+//DELETE METHOD
+router.delete("/:id", deleteTransactionSchema, (req, res) => {
+ try{
+   const { id } = req.params;
+  const index = transactions.findIndex((t) => t.id === id);
+  if (index === -1) return res.status(404).json({ error: "Transaction not found" });
+  transactions.splice(index, 1);
+ }catch(err){
+  console.error("Error Occur:",err)
+ }
 });
 
 module.exports = router;

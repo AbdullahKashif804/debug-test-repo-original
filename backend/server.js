@@ -1,11 +1,28 @@
 const express = require("express");
+const cors = require("cors"); 
+const txRoutes = require("./routes/transaction");
+
 const app = express();
-const txRoutes = require("./routes/transactions");
 
-app.use(express.json());
-app.use("/api/transactions", txRoutes);
+app.use(cors()); // allowing cors bcz frontend is on another port
+app.use(express.json()); 
 
-// ❌ No global error handler
+
+app.use("/api/transactions", txRoutes); 
+
+app.use((req, res, next) => {           //404 error handler
+  res.status(404).json({ error: "Not Found" });
+});
+
+//global error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack); 
+  res.status(err.status || 500).json({
+    error: err.message || "Internal Server Error",
+  });
+});
+
+
 app.listen(4000, () => {
-  console.log("Server running on 4000");
+  console.log(`Server running `);
 });
