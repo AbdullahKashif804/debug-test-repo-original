@@ -13,14 +13,22 @@ const createTransactionSchema = async (req, res, next) => {
       .string()
       .oneOf(["income", "expense"], "Type must be income or expense")
       .required("Type is required"),
+    date: yup
+      .date()
+      .typeError("Date must be a valid date")
+      .max(new Date(), "Date cannot be in the future")
+      .notRequired(),
   });
 
   try {
-    req.body = await schema.validate(req.body, {
-    });
+    req.body = await schema.validate(req.body, { abortEarly: false });
     next();
   } catch (err) {
-    res.status(400).send(`Error Occur: ${err.message}`);
+    return res.status(400).json({ 
+      success: false, 
+      message: "Validation failed", 
+      errors: err.errors 
+    });
   }
 };
 
@@ -29,15 +37,18 @@ const getTransactionsSchema = async (req, res, next) => {
   const schema = yup.object({
     type: yup.string().oneOf(["income", "expense"]).notRequired(),
     page: yup.number().positive().integer().default(1),
-    limit: yup.number().positive().integer().default(10),
+    limit: yup.number().positive().integer().max(100).default(10),
   });
 
   try {
-    req.query = await schema.validate(req.query, { 
-    });
+    req.query = await schema.validate(req.query, { abortEarly: false });
     next();
   } catch (err) {
-    res.status(400).send(`Error Occur: ${err.message}`);
+    return res.status(400).json({ 
+      success: false, 
+      message: "Invalid query parameters", 
+      errors: err.errors 
+    });
   }
 };
 
@@ -48,11 +59,14 @@ const deleteTransactionSchema = async (req, res, next) => {
   });
 
   try {
-    req.params = await schema.validate(req.params, {
-    });
+    req.params = await schema.validate(req.params, { abortEarly: false });
     next();
   } catch (err) {
-    res.status(400).send(`Error Occur: ${err.message}`);
+    return res.status(400).json({ 
+      success: false, 
+      message: "Invalid transaction ID", 
+      errors: err.errors 
+    });
   }
 };
 

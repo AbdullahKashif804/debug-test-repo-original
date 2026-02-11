@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { getTransactions, addTransaction } from "../api";
-import { Dashboardschema } from "../../Validation/DashboardSchema";
+import { getTransactions, addTransaction, deleteTransaction, getSummary } from "../service/api";
+import { Dashboardschema } from "../Validation/DashboardSchema";
 import toast from "react-hot-toast";
 
 const Dashboard = () => {
   const today = new Date().toISOString().split("T")[0]; // default today
   const [transactions, setTransactions] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [showSummary, setShowSummary] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     amount: "",
@@ -20,8 +22,13 @@ const Dashboard = () => {
   }, []);
 
   const fetchTransactions = async () => {
-    const data = await getTransactions();
-    setTransactions(data);
+    try {
+      const data = await getTransactions();
+      setTransactions(data || []);
+    } catch (err) {
+      console.error("Error fetching transactions:", err);
+      toast.error("Failed to load transactions");
+    }
   };
 
   const handleChange = (e) => {
@@ -34,9 +41,13 @@ const Dashboard = () => {
     try {
       await Dashboardschema.validate(formData, { abortEarly: false });
 
-      await addTransaction(formData);
-
-      fetchTransactions();
+      const res = await addTransaction(formData);
+    
+      // Push newly created transaction to state
+      if (res.success) {
+        setTransactions((prev) => [...prev, res.transaction]);
+        toast.success(res.message); // ✅ Success toast with backend message
+      }
 
       setFormData({
         title: "",
@@ -46,7 +57,6 @@ const Dashboard = () => {
       });
       setErrors({});
 
-      toast.success("Transaction added successfully!"); // ✅ Success toast
     } catch (err) {
       if (err.inner) {
         const validationErrors = {};
@@ -59,6 +69,44 @@ const Dashboard = () => {
         toast.error(err.message); // ❌ Error toast
       }
     }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      const res = await deleteTransaction(id);
+      
+      if (res.success) {
+        // Remove transaction from state
+        setTransactions((prev) => prev.filter((t) => t.id !== id));
+        toast.success(res.message || "Transaction deleted successfully");
+        // Update summary if it's visible
+        if (showSummary) {
+          fetchSummary();
+        }
+      }
+    } catch (err) {
+      toast.error("Failed to delete transaction");
+      console.error(err);
+    }
+  };
+
+  const fetchSummary = async () => {
+    try {
+      const res = await getSummary();
+      if (res.success) {
+        setSummary(res.summary);
+      }
+    } catch (err) {
+      toast.error("Failed to fetch summary");
+      console.error(err);
+    }
+  };
+
+  const toggleSummary = () => {
+    if (!showSummary) {
+      fetchSummary();
+    }
+    setShowSummary(!showSummary);
   };
 
  return (
@@ -273,6 +321,121 @@ const Dashboard = () => {
       Add Transaction
     </button>
 
+    {/* Summary Button */}
+    <button
+      type="button"
+      onClick={toggleSummary}
+      style={{
+        width: "100%",
+        padding: 14,
+        marginTop: 16,
+        borderRadius: 10,
+        background: showSummary
+          ? "linear-gradient(90deg, #66bb6a, #43a047)"
+          : "linear-gradient(90deg, #ffa726, #fb8c00)",
+        color: "#fff",
+        fontWeight: 600,
+        border: "none",
+        cursor: "pointer",
+        fontSize: 15,
+        transition: "all 0.3s",
+      }}
+      onMouseOver={(e) => {
+        e.currentTarget.style.opacity = "0.9";
+      }}
+      onMouseOut={(e) => {
+        e.currentTarget.style.opacity = "1";
+      }}
+    >
+      {showSummary ? "Hide Summary" : "Show Summary"}
+    </button>
+
+    {/* Summary Display */}
+    {showSummary && summary && (
+      <div
+        style={{
+          marginTop: 24,
+          padding: 20,
+          borderRadius: 12,
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          color: "#fff",
+          boxShadow: "0 8px 16px rgba(0,0,0,0.15)",
+        }}
+      >
+        <h3
+          style={{
+            margin: "0 0 16px 0",
+            fontSize: 18,
+            fontWeight: 600,
+            textAlign: "center",
+          }}
+        >
+          Financial Summary
+        </h3>
+        <div style={{ display: "grid", gap: 12 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              padding: "10px 12px",
+              background: "rgba(255,255,255,0.15)",
+              borderRadius: 8,
+            }}
+          >
+            <span style={{ fontWeight: 500 }}>Total Income:</span>
+            <span style={{ fontWeight: 700, color: "#a5d6a7" }}>
+              ${summary.totalIncome.toFixed(2)}
+            </span>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              padding: "10px 12px",
+              background: "rgba(255,255,255,0.15)",
+              borderRadius: 8,
+            }}
+          >
+            <span style={{ fontWeight: 500 }}>Total Expenses:</span>
+            <span style={{ fontWeight: 700, color: "#ef9a9a" }}>
+              ${summary.totalExpense.toFixed(2)}
+            </span>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              padding: "10px 12px",
+              background: "rgba(255,255,255,0.25)",
+              borderRadius: 8,
+              border: "2px solid rgba(255,255,255,0.3)",
+            }}
+          >
+            <span style={{ fontWeight: 600, fontSize: 16 }}>Net Balance:</span>
+            <span
+              style={{
+                fontWeight: 700,
+                fontSize: 16,
+                color: summary.netBalance >= 0 ? "#a5d6a7" : "#ef9a9a",
+              }}
+            >
+              ${summary.netBalance.toFixed(2)}
+            </span>
+          </div>
+          <div
+            style={{
+              textAlign: "center",
+              marginTop: 8,
+              fontSize: 13,
+              opacity: 0.9,
+            }}
+          >
+            Total Transactions: {summary.transactionCount}
+          </div>
+        </div>
+      </div>
+    )}
+
     {/* Transactions List */}
     <h3
       style={{
@@ -293,6 +456,7 @@ const Dashboard = () => {
           style={{
             display: "flex",
             justifyContent: "space-between",
+            alignItems: "center",
             padding: "14px 18px",
             marginBottom: 10,
             borderRadius: 10,
@@ -313,10 +477,36 @@ const Dashboard = () => {
             e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.05)";
           }}
         >
-          <span>{t.title}</span>
-          <span>
-            {t.amount} ({t.type})
-          </span>
+          <div style={{ flex: 1 }}>
+            <span style={{ fontWeight: 600 }}>{t.title}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontWeight: 500 }}>
+              ${t.amount} ({t.type})
+            </span>
+            <button
+              onClick={() => handleDelete(t.id)}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 6,
+                border: "none",
+                backgroundColor: "#f44336",
+                color: "#fff",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = "#d32f2f";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = "#f44336";
+              }}
+            >
+              Delete
+            </button>
+          </div>
         </li>
       ))}
     </ul>

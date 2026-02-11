@@ -4,7 +4,10 @@ const txRoutes = require("./routes/transaction");
 
 const app = express();
 
-app.use(cors()); // allowing cors bcz frontend is on another port
+app.use(cors({
+  origin: "http://localhost:5173", // Allow requests from this origin
+  methods: ["GET", "POST", "DELETE"],
+})); // allowing cors bcz frontend is on another port
 app.use(express.json()); 
 
 
