@@ -22,6 +22,11 @@ export const Dashboardschema = yup.object({
 
   date: yup
     .date()
-    .max(new Date(), "Date cannot be in the future")
+    .typeError("Date must be a valid date")
+    .test(
+        "not-future",
+        "Date cannot be in the future",
+        (value) => !value || value <= new Date()
+    )
     .required("Transaction date is required"),
 });
