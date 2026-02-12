@@ -24,7 +24,9 @@ const Dashboard = () => {
   const fetchTransactions = async () => {
     try {
       const data = await getTransactions();
-      setTransactions(data || []);
+      // backend returns { success, transactions, total } or { success, data: { transactions } }
+      const txs = (data && (data.transactions || data.data?.transactions)) || [];
+      setTransactions(txs);
     } catch (err) {
       console.error("Error fetching transactions:", err);
       toast.error("Failed to load transactions");
@@ -39,22 +41,19 @@ const Dashboard = () => {
 
   const submit = async () => {
     try {
-      await Dashboardschema.validate(formData, { abortEarly: false });
+      // Coerce amount to number before validation/submission
+      const payload = { ...formData, amount: Number(formData.amount) };
+      await Dashboardschema.validate(payload, { abortEarly: false });
 
-      const res = await addTransaction(formData);
-    
-      // Push newly created transaction to state
-      if (res.success) {
-        setTransactions((prev) => [...prev, res.transaction]);
-        toast.success(res.message); // ✅ Success toast with backend message
+      const res = await addTransaction(payload);
+
+      if (res && res.success) {
+        const tx = res.data || res.transaction || res;
+        setTransactions((prev) => [...prev, tx]);
+        toast.success(res.message || "Transaction added");
       }
 
-      setFormData({
-        title: "",
-        amount: "",
-        type: "expense",
-        date: today,
-      });
+      setFormData({ title: "", amount: "", type: "expense", date: today });
       setErrors({});
 
     } catch (err) {
@@ -93,8 +92,8 @@ const Dashboard = () => {
   const fetchSummary = async () => {
     try {
       const res = await getSummary();
-      if (res.success) {
-        setSummary(res.summary);
+      if (res && res.success) {
+        setSummary(res.data || res.summary || res);
       }
     } catch (err) {
       toast.error("Failed to fetch summary");
