@@ -20,13 +20,6 @@ export const Dashboardschema = yup.object({
     .oneOf(["income", "expense"], "Type must be either 'income' or 'expense'")
     .required("Transaction type is required"),
 
-  category: yup
-    .string()
-    .trim()
-    .min(2, "Category must be at least 2 characters")
-    .max(30, "Category cannot exceed 30 characters")
-    .optional(),
-
   date: yup
     .date()
     .max(new Date(), "Date cannot be in the future")
