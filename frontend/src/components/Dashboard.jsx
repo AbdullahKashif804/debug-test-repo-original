@@ -28,7 +28,7 @@ const Dashboard = () => {
 
   const fetchSummary = async () => {
     const data = await getTransactionSummary();
-    setSummary(data);
+    setSummary(data || { total: 0 });
   };
 
   const handleChange = (e) => {
@@ -40,8 +40,8 @@ const Dashboard = () => {
   const submit = async () => {
     try {
       setLoading(true);
-      await Dashboardschema.validate(formData, { abortEarly: false });
-      await addTransaction(formData);
+      const validatedData = await Dashboardschema.validate(formData, { abortEarly: false });
+      await addTransaction(validatedData);
       await fetchTransactions();
       await fetchSummary();
 

@@ -1,11 +1,13 @@
 const db = require("../database/db");
 const { calculateTotal } = require("../services/calcService");
 
+let idCounter = 0;
+
 // POST /api/transactions
 const createTransaction = (req, res, next) => {
     try {
         const { title, amount, type, date } = req.body;
-        const tx = { id: Date.now(), title, amount, type, date };
+        const tx = { id: Date.now() * 1000 + (idCounter++ % 1000), title, amount, type, date };
         db.transactions.push(tx);
         res.status(201).json(tx);
     } catch (err) {

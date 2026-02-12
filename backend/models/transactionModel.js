@@ -15,7 +15,11 @@ const createTransactionModel = yup.object({
     date: yup
         .date()
         .typeError("Date must be a valid date")
-        .max(new Date(), "Date cannot be in the future")
+        .test(
+            "not-future",
+            "Date cannot be in the future",
+            (value) => !value || value <= new Date()
+        )
         .required("Date is required"),
 });
 
